@@ -1,0 +1,179 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Country - Root hierarchy level
+model Country {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique @db.VarChar(10)
+  name      String   @unique @db.VarChar(100)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  states State[]
+  users  User[]
+
+  @@index([code])
+  @@map("countries")
+}
+
+// State - State-level data
+model State {
+  id        Int      @id @default(autoincrement())
+  code      String   @db.VarChar(10)
+  name      String   @db.VarChar(100)
+  countryId Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  country   Country    @relation(fields: [countryId], references: [id])
+  districts District[]
+  access    UserStateAccess[]
+
+  @@unique([countryId, code])
+  @@index([countryId])
+  @@index([name])
+  @@map("states")
+}
+
+// District - District-level data
+model District {
+  id        Int      @id @default(autoincrement())
+  code      String   @db.VarChar(10)
+  name      String   @db.VarChar(100)
+  stateId   Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  state         State         @relation(fields: [stateId], references: [id], onDelete: Cascade)
+  subDistricts  SubDistrict[]
+
+  @@unique([stateId, code])
+  @@index([stateId])
+  @@index([name])
+  @@map("districts")
+}
+
+// SubDistrict (Block/Taluka level)
+model SubDistrict {
+  id        Int      @id @default(autoincrement())
+  code      String   @db.VarChar(10)
+  name      String   @db.VarChar(100)
+  districtId Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  district District @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  villages  Village[]
+
+  @@unique([districtId, code])
+  @@index([districtId])
+  @@index([name])
+  @@map("sub_districts")
+}
+
+// Village - Village/Area level
+model Village {
+  id          Int      @id @default(autoincrement())
+  code        String   @db.VarChar(20)
+  name        String   @db.VarChar(150)
+  subDistrictId Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subDistrict SubDistrict @relation(fields: [subDistrictId], references: [id], onDelete: Cascade)
+
+  @@unique([subDistrictId, code])
+  @@index([subDistrictId])
+  @@index([name])
+  @@map("villages")
+}
+
+// User - B2B client accounts
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique @db.VarChar(150)
+  name      String   @db.VarChar(100)
+  password  String   @db.Text
+  planType  String   @default("free") @db.VarChar(50) // free, pro, enterprise
+  active    Boolean  @default(true)
+  countryId Int      @default(1) // Default to India
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  country   Country       @relation(fields: [countryId], references: [id])
+  apiKeys   ApiKey[]
+  logs      ApiLog[]
+  stateAccess UserStateAccess[]
+
+  @@index([email])
+  @@index([active])
+  @@map("users")
+}
+
+// ApiKey - API credentials for users
+model ApiKey {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique @db.VarChar(50)
+  secretHash String   @db.Text
+  userId    Int
+  active    Boolean  @default(true)
+  lastUsed  DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User    @relation(fields: [userId], references: [id])
+  logs ApiLog[]
+
+  @@index([key])
+  @@index([userId])
+  @@index([active])
+  @@map("api_keys")
+}
+
+// UserStateAccess - Access control for states
+model UserStateAccess {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  stateId   Int
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  state State @relation(fields: [stateId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, stateId])
+  @@index([userId])
+  @@index([stateId])
+  @@map("user_state_access")
+}
+
+// ApiLog - Usage tracking and analytics
+model ApiLog {
+  id          Int      @id @default(autoincrement())
+  apiKeyId    Int
+  userId      Int
+  endpoint    String   @db.VarChar(255)
+  method      String   @db.VarChar(10)
+  statusCode  Int
+  responseTime Int      // milliseconds
+  userAgent   String   @db.Text
+  ipAddress   String   @db.VarChar(50)
+  createdAt   DateTime @default(now())
+
+  apiKey ApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([apiKeyId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([endpoint])
+  @@map("api_logs")
+}

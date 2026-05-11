@@ -1,0 +1,14 @@
+# Backend dependencies
+node_modules/
+npm-debug.log
+.env
+.DS_Store
+
+# Data files (generated)
+data/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
