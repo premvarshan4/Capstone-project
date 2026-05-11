@@ -19,7 +19,7 @@ const { verifyApiKey, verifyJWT } = require("./config/auth");
 
 const app = express();
 const PORT = process.env.PORT || 8000;
-const HOST = process.env.HOST || "127.0.0.1";
+
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(helmet());
@@ -519,18 +519,19 @@ app.use(async (req, res, next) => {
   next();
 });
 
-// ── Start Server ──────────────────────────────────────────────────────────────
 async function start() {
   try {
     // Test database connection
     await prisma.$queryRaw`SELECT 1`;
     console.log("✅ Database connected");
 
-    app.listen(PORT, HOST, () => {
+    const PORT = process.env.PORT || 10000;
+
+    app.listen(PORT, "0.0.0.0", () => {
       console.log("\n🚀 Bharat Villages API Server v2.0");
-      console.log(`📡 Running on: http://${HOST}:${PORT}`);
-      console.log(`📚 API Docs: http://${HOST}:${PORT}/api/docs`);
-      console.log(`🔍 Try: http://${HOST}:${PORT}/api/v1/states\n`);
+      console.log(`📡 Running on port ${PORT}`);
+      console.log(`📚 API Docs: /api/docs`);
+      console.log(`🔍 Try: /api/v1/states\n`);
     });
   } catch (error) {
     console.error("❌ Failed to start server:", error);
