@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+const API_BASE_URL = 'https://capstone-backend-maxx-production.up.railway.app';
 const API_KEY = 'key_5dm3lq4y7eo';
 
 const apiClient = axios.create({
