@@ -26,9 +26,12 @@ app.use(helmet());
 app.use(express.json());
 app.use(
   cors({
-    origin: (process.env.CORS_ORIGIN || "http://localhost:3000").split(","),
+    origin: [
+      "https://capstone-project-pied-tau.vercel.app",
+      "http://localhost:3000"
+    ],
     credentials: true,
-  })
+})
 );
 
 // Rate limiting
