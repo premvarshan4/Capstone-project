@@ -15,7 +15,7 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 
 const { prisma } = require("./config/db");
-const { verifyApiKey, verifyJWT } = require("./config/auth");
+const { verifyApiKey, verifyJWT, generateToken } = require("./config/auth");
 
 const app = express();
 const PORT = process.env.PORT || 8000;
