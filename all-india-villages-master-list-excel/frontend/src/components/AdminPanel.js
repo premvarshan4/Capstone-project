@@ -1,28 +1,64 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const API_BASE = 'http://127.0.0.1:8000';
+// ✅ FIXED: Using production Railway URL instead of localhost
+const API_BASE = 'https://capstone-backend-maxx-production.up.railway.app';
 
 const mono = "'JetBrains Mono', monospace";
 const sans = "'Space Grotesk', sans-serif";
 
 export default function AdminPanel() {
   const [tab, setTab] = useState('dashboard');
+  const [authMode, setAuthMode] = useState('login'); // 'login' | 'register' | 'forgot'
   const [users, setUsers] = useState([]);
   const [logs, setLogs] = useState([]);
   const [stats, setStats] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('adminToken'));
+
+  // Form fields
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const login = async () => {
+    if (!email || !password) { setError('Please fill all fields'); return; }
+    setLoading(true); setError('');
     try {
       const res = await axios.post(`${API_BASE}/api/auth/login`, { email, password });
       localStorage.setItem('adminToken', res.data.token);
       setToken(res.data.token);
       setError('');
     } catch { setError('Invalid credentials'); }
+    setLoading(false);
+  };
+
+  const register = async () => {
+    if (!email || !password || !name) { setError('Please fill all fields'); return; }
+    if (password !== confirmPassword) { setError('Passwords do not match'); return; }
+    if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
+    setLoading(true); setError('');
+    try {
+      const res = await axios.post(`${API_BASE}/api/auth/register`, { email, name, password });
+      localStorage.setItem('adminToken', res.data.token);
+      setToken(res.data.token);
+      setError('');
+    } catch (e) {
+      setError(e.response?.data?.error || 'Registration failed');
+    }
+    setLoading(false);
+  };
+
+  const forgotPassword = async () => {
+    if (!email) { setError('Please enter your email'); return; }
+    setLoading(true); setError(''); setSuccess('');
+    // Simulate sending reset email (you can integrate an email service later)
+    await new Promise(r => setTimeout(r, 1500));
+    setSuccess(`If ${email} is registered, you'll receive a reset link shortly. Please contact the admin at premvarshan4@gmail.com to reset your password.`);
+    setLoading(false);
   };
 
   const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
@@ -34,19 +70,106 @@ export default function AdminPanel() {
     axios.get(`${API_BASE}/api/v1/stats`, { headers: { 'X-API-Key': 'key_5dm3lq4y7eo' } }).then(r => setStats(r.data)).catch(() => {});
   }, [token]);
 
-  const inputStyle = { width: '100%', padding: '12px 16px', marginBottom: 12, borderRadius: 8, border: '1px solid rgba(0,180,216,0.25)', background: 'rgba(3,4,94,0.6)', color: 'white', fontFamily: sans, fontSize: 14, outline: 'none', boxSizing: 'border-box' };
+  const inputStyle = {
+    width: '100%', padding: '12px 16px', marginBottom: 12, borderRadius: 8,
+    border: '1px solid rgba(0,180,216,0.25)', background: 'rgba(3,4,94,0.6)',
+    color: 'white', fontFamily: sans, fontSize: 14, outline: 'none', boxSizing: 'border-box'
+  };
 
+  const resetForm = () => {
+    setEmail(''); setPassword(''); setName(''); setConfirmPassword('');
+    setError(''); setSuccess('');
+  };
+
+  const switchMode = (mode) => {
+    setAuthMode(mode);
+    resetForm();
+  };
+
+  // ── Auth Screen ───────────────────────────────────────────────────────────
   if (!token) return (
     <div style={{ maxWidth: 420, margin: '80px auto', padding: 40, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(0,180,216,0.2)', borderRadius: 20, backdropFilter: 'blur(10px)' }}>
       <div style={{ fontFamily: mono, fontSize: 11, color: 'rgba(0,180,216,0.6)', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 12 }}>admin access</div>
-      <h2 style={{ fontSize: 28, fontWeight: 700, color: 'white', marginBottom: 28, letterSpacing: -1 }}>Admin <span style={{ color: '#00B4D8' }}>Login</span></h2>
-      {error && <div style={{ background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)', color: '#ff8a8a', padding: '10px 14px', borderRadius: 8, marginBottom: 16, fontFamily: mono, fontSize: 12 }}>{error}</div>}
+
+      {/* Title */}
+      <h2 style={{ fontSize: 28, fontWeight: 700, color: 'white', marginBottom: 28, letterSpacing: -1 }}>
+        {authMode === 'login' && <>Admin <span style={{ color: '#00B4D8' }}>Login</span></>}
+        {authMode === 'register' && <>Create <span style={{ color: '#00B4D8' }}>Account</span></>}
+        {authMode === 'forgot' && <>Reset <span style={{ color: '#00B4D8' }}>Password</span></>}
+      </h2>
+
+      {/* Error */}
+      {error && (
+        <div style={{ background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)', color: '#ff8a8a', padding: '10px 14px', borderRadius: 8, marginBottom: 16, fontFamily: mono, fontSize: 12 }}>
+          {error}
+        </div>
+      )}
+
+      {/* Success */}
+      {success && (
+        <div style={{ background: 'rgba(82,183,136,0.1)', border: '1px solid rgba(82,183,136,0.3)', color: '#52B788', padding: '10px 14px', borderRadius: 8, marginBottom: 16, fontFamily: mono, fontSize: 12 }}>
+          {success}
+        </div>
+      )}
+
+      {/* Register: Name field */}
+      {authMode === 'register' && (
+        <input placeholder="Full Name" value={name} onChange={e => setName(e.target.value)} style={inputStyle} />
+      )}
+
+      {/* Email */}
       <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} />
-      <input placeholder="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} style={inputStyle} />
-      <button onClick={login} style={{ width: '100%', padding: 14, background: 'linear-gradient(135deg, #0077B6, #00B4D8)', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: sans, letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}>Login</button>
+
+      {/* Password fields */}
+      {authMode !== 'forgot' && (
+        <input placeholder="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} style={inputStyle} />
+      )}
+
+      {/* Confirm Password for Register */}
+      {authMode === 'register' && (
+        <input placeholder="Confirm Password" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} style={inputStyle} />
+      )}
+
+      {/* Forgot Password link (only on login) */}
+      {authMode === 'login' && (
+        <div style={{ textAlign: 'right', marginBottom: 12, marginTop: -4 }}>
+          <span onClick={() => switchMode('forgot')} style={{ fontFamily: mono, fontSize: 11, color: 'rgba(0,180,216,0.6)', cursor: 'pointer', textDecoration: 'underline' }}>
+            Forgot password?
+          </span>
+        </div>
+      )}
+
+      {/* Submit Button */}
+      <button
+        onClick={authMode === 'login' ? login : authMode === 'register' ? register : forgotPassword}
+        disabled={loading}
+        style={{ width: '100%', padding: 14, background: loading ? 'rgba(0,119,182,0.4)' : 'linear-gradient(135deg, #0077B6, #00B4D8)', color: 'white', border: 'none', borderRadius: 8, cursor: loading ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: sans, letterSpacing: 2, textTransform: 'uppercase', marginTop: 4 }}
+      >
+        {loading ? 'Please wait...' : authMode === 'login' ? 'Login' : authMode === 'register' ? 'Create Account' : 'Send Reset Link'}
+      </button>
+
+      {/* Switch between Login / Register */}
+      <div style={{ marginTop: 20, textAlign: 'center', fontFamily: mono, fontSize: 12, color: 'rgba(144,224,239,0.5)' }}>
+        {authMode === 'login' && (
+          <>Don't have an account?{' '}
+            <span onClick={() => switchMode('register')} style={{ color: '#00B4D8', cursor: 'pointer', textDecoration: 'underline' }}>Register</span>
+          </>
+        )}
+        {authMode === 'register' && (
+          <>Already have an account?{' '}
+            <span onClick={() => switchMode('login')} style={{ color: '#00B4D8', cursor: 'pointer', textDecoration: 'underline' }}>Login</span>
+          </>
+        )}
+        {authMode === 'forgot' && (
+          <>Remember your password?{' '}
+            <span onClick={() => switchMode('login')} style={{ color: '#00B4D8', cursor: 'pointer', textDecoration: 'underline' }}>Login</span>
+          </>
+        )}
+      </div>
     </div>
   );
 
+  // ── Admin Dashboard ───────────────────────────────────────────────────────
   return (
     <div style={{ display: 'flex', minHeight: '80vh', gap: 24 }}>
       <div style={{ width: 220, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(0,180,216,0.2)', borderRadius: 16, padding: 24, backdropFilter: 'blur(10px)', height: 'fit-content' }}>
@@ -56,7 +179,7 @@ export default function AdminPanel() {
             {t === 'dashboard' ? '◈ Dashboard' : t === 'users' ? '◉ Users' : '◎ Logs'}
           </div>
         ))}
-        <div onClick={() => { localStorage.removeItem('adminToken'); setToken(null); }} style={{ padding: '10px 14px', borderRadius: 8, marginTop: 20, cursor: 'pointer', fontFamily: sans, fontSize: 14, color: 'rgba(255,107,107,0.7)', border: '1px solid transparent' }}>
+        <div onClick={() => { localStorage.removeItem('adminToken'); setToken(null); resetForm(); setAuthMode('login'); }} style={{ padding: '10px 14px', borderRadius: 8, marginTop: 20, cursor: 'pointer', fontFamily: sans, fontSize: 14, color: 'rgba(255,107,107,0.7)', border: '1px solid transparent' }}>
           ⊘ Logout
         </div>
       </div>
